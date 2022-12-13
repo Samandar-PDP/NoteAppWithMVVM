@@ -5,6 +5,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,13 +22,15 @@ fun DetailScreen(
     navHostController: NavHostController,
     viewModel: DetailViewModel
 ) {
+    val isForUpdate by remember {
+        mutableStateOf(_title != "null")
+    }
     var title by remember {
         mutableStateOf(if (_title != "null") _title else "")
     }
     var content by remember {
         mutableStateOf(if (_content != "null") _content else "")
     }
-    println("@@@ $id")
     val scaffoldState = rememberScaffoldState()
     val scope = rememberCoroutineScope()
     Scaffold(
@@ -43,17 +46,56 @@ fun DetailScreen(
                     IconButton(onClick = { navHostController.popBackStack() }) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    if (isForUpdate) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                scaffoldState.snackbarHostState.showSnackbar(
+                                    "Deleted!"
+                                )
+                                viewModel.onEvent(
+                                    DetailEvent.DeleteNote(
+                                        Note(
+                                            id,
+                                            _title,
+                                            _content
+                                        )
+                                    )
+                                )
+                                navHostController.popBackStack()
+                            }
+                        }) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete")
+                        }
+                    }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                scope.launch {
-                    viewModel.onEvent(DetailEvent.SaveNote(Note(title = title, content = content)))
-                    scaffoldState.snackbarHostState.showSnackbar(
-                        "Successfully saved!"
-                    )
-                    navHostController.popBackStack()
+                if (isForUpdate) {
+                    scope.launch {
+                        viewModel.onEvent(DetailEvent.UpdateNote(Note(id, title, content)))
+                        scaffoldState.snackbarHostState.showSnackbar(
+                            "Updated"
+                        )
+                    }
+                } else {
+                    scope.launch {
+                        viewModel.onEvent(
+                            DetailEvent.SaveNote(
+                                Note(
+                                    title = title,
+                                    content = content
+                                )
+                            )
+                        )
+                        scaffoldState.snackbarHostState.showSnackbar(
+                            "Successfully saved!"
+                        )
+                        navHostController.popBackStack()
+                    }
                 }
             }) {
                 Icon(imageVector = Icons.Filled.Check, contentDescription = "")
